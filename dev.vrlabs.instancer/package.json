@@ -1,0 +1,9 @@
+{
+  "name": "dev.vrlabs.instancer",
+  "displayName": "VRLabs - Instancer",
+  "version": "0.0.2",
+  "unity": "2019.4",
+  "description": "This is Very Fancy",
+  "dependencies": {
+  }
+}
