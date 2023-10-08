@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace VRLabs
 {
-	public class MyFancyPackage : ScriptableObject
+	public class ExamplePackage : ScriptableObject
 	{
 		public const string packageName = "ExamplePackage";
 		
@@ -44,7 +44,7 @@ namespace VRLabs
 			// Gives disk path, Unity uses Packages/dev.vrlabs.fancy, can't use this
 			// string assetPath = new System.Diagnostics.StackTrace(true).GetFrame(0).GetFileName();
 			
-			var editor = ScriptableObject.CreateInstance<MyFancyPackage>();
+			var editor = ScriptableObject.CreateInstance<ExamplePackage>();
 			var script = MonoScript.FromScriptableObject(editor);
 			var assetPath =  AssetDatabase.GetAssetPath(script);
 			
