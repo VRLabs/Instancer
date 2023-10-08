@@ -178,7 +178,7 @@ namespace VRLabs
 			if (targetPath.StartsWith(sourceFolder))
 			{
 				string newTargetPath = targetFolder + targetPath.Remove(0, sourceFolder.Length); 
-				return AssetDatabase.LoadAssetAtPath(newTargetPath, target.GetType());
+				return AssetDatabase.LoadAllAssetsAtPath(newTargetPath).Where(obj => obj.GetType() == target.GetType()).FirstOrDefault(x => x.name == target.name);
 			}
 
 			return target;
