@@ -4,15 +4,12 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
-namespace VRLabs
+namespace VRLabs.ExamplePackage
 {
 	public class ExamplePackage : ScriptableObject
 	{
 		public const string packageName = "ExamplePackage";
 		
-		public static BindingFlags ALL = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
-		                          BindingFlags.NonPublic;
-
 		public static string[] excludeRegexs =
 		{
 			".*\\.cs",
@@ -20,7 +17,7 @@ namespace VRLabs
 			"package.json"
 		};
 
-		[MenuItem("VRLabs/FunkyThing")]
+		[MenuItem("VRLabs/ExamplePackage")]
 		public static void FancyPackage()
 		{
 			Type instancerType = AppDomain.CurrentDomain.GetAssemblies()
@@ -29,20 +26,17 @@ namespace VRLabs
 
 			if (instancerType == null)
 			{
-				Debug.LogError("Instancer not found. This Shouldn't Compile. Please tell the VRLabs devs");	
+				Debug.LogError("Instancer not found. To use this functionality, install the VRLabs Instancer from https://github.com/VRLabs/Instancer");	
 				return;
 			}
 
-			MethodInfo instanceMethod = instancerType.GetMethod("Instance", ALL);
+			MethodInfo instanceMethod = instancerType.GetMethod("Instance", BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
 
 			if (instanceMethod == null)
 			{
 				Debug.LogError("Instance method not found");
 				return;
 			}
-
-			// Gives disk path, Unity uses Packages/dev.vrlabs.fancy, can't use this
-			// string assetPath = new System.Diagnostics.StackTrace(true).GetFrame(0).GetFileName();
 			
 			var editor = ScriptableObject.CreateInstance<ExamplePackage>();
 			var script = MonoScript.FromScriptableObject(editor);
