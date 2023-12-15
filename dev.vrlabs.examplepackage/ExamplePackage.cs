@@ -21,8 +21,8 @@ namespace VRLabs.ExamplePackage
 		public static void FancyPackage()
 		{
 			Type instancerType = AppDomain.CurrentDomain.GetAssemblies()
-				.Where(x => x.GetType("VRLabs.Instancer") != null)
-				.Select(x => x.GetType("VRLabs.Instancer")).FirstOrDefault();
+				.Where(x => x.GetType("VRLabs.Instancer.Instancer") != null)
+				.Select(x => x.GetType("VRLabs.Instancer.Instancer")).FirstOrDefault();
 
 			if (instancerType == null)
 			{
