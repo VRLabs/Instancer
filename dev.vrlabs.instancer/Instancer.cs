@@ -15,12 +15,6 @@ namespace VRLabs.Instancer
 	{
 		public static string Instance(string packageName, string installFilePath, string[] excludeRegexs)
 		{
-			if (!installFilePath.Replace("\\", "/").StartsWith("Packages/"))
-			{
-				Debug.LogError($"Package not found in Packages folder, please move the {packageName} package to the Packages folder.");
-				return null;
-			}
-			
 			string targetFolder = EditorUtility.OpenFolderPanel("Select Directory To Copy Assets To", "Assets/", "");
 
 			if (targetFolder == "" || targetFolder == null)
@@ -80,7 +74,7 @@ namespace VRLabs.Instancer
 		{
 			string sourceFolder = installFilePath;
 
-			while (Path.GetDirectoryName(sourceFolder) != "Packages")
+			while (!File.Exists(sourceFolder + "/package.json"))
 			{
 				sourceFolder = Path.GetDirectoryName(sourceFolder);
 			}
@@ -128,7 +122,10 @@ namespace VRLabs.Instancer
 				AssetDatabase.StartAssetEditing();
 				foreach (string path in filePaths)
 				{
-					AssetDatabase.CopyAsset(sourceFolder + path, targetFolder + path);
+					if (!Directory.Exists(sourceFolder + path))
+					{
+						AssetDatabase.CopyAsset(sourceFolder + path, targetFolder + path);
+					}
 				}
 			}
 			finally{

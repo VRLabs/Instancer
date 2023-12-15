@@ -1,5 +1,6 @@
 {
-    "name": "Ins",
+    "name": "VRLabs Instancer",
+    "rootNamespace": "",
     "references": [],
     "includePlatforms": [
         "Editor"

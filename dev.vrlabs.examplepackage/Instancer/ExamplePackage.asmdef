@@ -1,5 +1,6 @@
 {
-    "name": "NewAssembly",
+    "name": "VRLabs Examplepackage Instancer",
+    "rootNamespace": "",
     "references": [],
     "includePlatforms": [
         "Editor"
@@ -10,6 +11,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "dev.vrlabs.instancer",
+            "expression": "",
+            "define": "VRLABS_INSTANCER_FOUND"
+        }
+    ],
     "noEngineReferences": false
 }

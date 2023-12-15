@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if VRLABS_INSTANCER_FOUND
+using System;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -46,3 +47,4 @@ namespace VRLabs.ExamplePackage
 		}
 	}	
 }
+#endif
