@@ -41,6 +41,8 @@ namespace VRLabs.Instancer
 
 			FixReferences(localAssetPaths, sourceFolder, targetFolder);
 			
+			AssetDatabase.Refresh();
+			
 			return targetFolder;
 		}
 		
