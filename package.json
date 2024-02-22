@@ -14,7 +14,7 @@
   "vpmDependencies": {},
   "legacyFolders": {},
   "unityPackageDestinationFolder": "Assets/VRLabs/Instancer",
-  "vccRepoCategory": "essentials",
+  "vccRepoCategory": "dependencies",
   "unityPackageDestinationFolderMetas": {
     "Assets/VRLabs": "652a1ba5b00554143bc9a76307dbc4e8",
     "Assets/VRLabs/Instancer": "28d5f0bca06a0d147aae2cbccaaf54a3"
