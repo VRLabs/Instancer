@@ -1,0 +1,22 @@
+{
+  "name": "dev.vrlabs.instancer",
+  "displayName": "VRLabs Instancer",
+  "version": "1.0.999",
+  "license": "MIT",
+  "unity": "2019.4",
+  "description": "VRLabs' Instancing system that copies files over for use in the Assets directory and can also runs install scripts.",
+  "author": {
+    "name": "VRLabs",
+    "email": "mail@vrlabs.dev",
+    "url": "https://vrlabs.dev"
+  },
+  "siteUrl": "https://github.com/VRLabs/Instancer",
+  "vpmDependencies": {},
+  "legacyFolders": {},
+  "unityPackageDestinationFolder": "Assets/VRLabs/Instancer",
+  "vccRepoCategory": "dependencies",
+  "unityPackageDestinationFolderMetas": {
+    "Assets/VRLabs": "652a1ba5b00554143bc9a76307dbc4e8",
+    "Assets/VRLabs/Instancer": "28d5f0bca06a0d147aae2cbccaaf54a3"
+  }
+}
