@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -45,9 +45,9 @@ namespace VRLabs.Instancer
 			return targetFolder;
 		}
 		
-		public static void Install(string packageName, string installFilePath, string[] filePaths, Action<string> callBack)
+		public static void Install(string packageName, string installFilePath, string[] excludeRegexs, Action<string> callBack)
 		{
-			string instancePath = Instance(packageName, installFilePath, filePaths);
+			string instancePath = Instance(packageName, installFilePath, excludeRegexs);
 			callBack(instancePath);
 		}
 
