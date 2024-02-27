@@ -38,6 +38,8 @@ namespace VRLabs.Instancer
 
 			CopyFiles(localAssetPaths, sourceFolder, targetFolder);
 
+			AssetDatabase.Refresh();
+			
 			FixReferences(localAssetPaths, sourceFolder, targetFolder);
 			
 			AssetDatabase.Refresh();
