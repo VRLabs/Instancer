@@ -14,6 +14,9 @@ VRLabs' Instancing system that copies files over for use in the Assets directory
 
 ### ⬇️ [Download Latest Version](https://github.com/VRLabs/Instancer/releases/latest)
 
+### 📦 [Add to VRChat Creator Companion](https://vrlabs.dev/packages?package=dev.vrlabs.instancer)
+
+</div>
 
 ---
 
@@ -33,7 +36,7 @@ VRLabs' Instancing system that copies files over for use in the Assets directory
 ## Contributors
 
 * [Jelle](https://jellejurre.dev)
-* 
+
 ## License
 
 Instancer is available as-is under MIT. For more information see [LICENSE](https://github.com/VRLabs/Instancer/blob/main/LICENSE).
