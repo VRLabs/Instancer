@@ -76,13 +76,24 @@ namespace VRLabs.Instancer
 		static string GetSourceFolder(string installFilePath)
 		{
 			string sourceFolder = installFilePath;
-
+#if UNITY_2019
+			while (!File.Exists("." + sourceFolder + "/package.json"))
+#else
 			while (!File.Exists(sourceFolder + "/package.json"))
+#endif
 			{
-				sourceFolder = Path.GetDirectoryName(sourceFolder);
+				if (sourceFolder == null)
+				{
+					throw new ArgumentException("Supplied path not in correct format");
+				}
+				sourceFolder = Path.GetDirectoryName(sourceFolder); 
 			}
-
-			return sourceFolder.Replace("\\", "/");
+			
+#if UNITY_2019
+			return sourceFolder.Replace("\\", "/").Substring(1);
+#else
+			return sourceFolder.Replace("\\", "/").Substring(2);
+#endif
 		}
 
 		static string[] GetLocalAssetPaths(string sourceFolder, string[] excludeRegexs)
