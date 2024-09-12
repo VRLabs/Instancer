@@ -33,6 +33,14 @@ VRLabs' Instancing system that copies files over for use in the Assets directory
 
 * Click the `VRLabs/[PackageName]` button in the toolbar and select an output folder to copy to.
 
+### Instance Any Package
+
+* You can use the `VRLabs/Instance Any Package` button to instance and rename any package in the Assets folder.
+* It will ask you for the package name and the new instance name.
+  * Note that it will only rename things that start with the package name, so if you have e.g. controller parameters that start with a different name, they wont be renamed and will clash with the initial package.
+  * Note that materials will reference shaders from the original package as shaders are not copied over.
+  * Note that big packages might crash your Unity Editor and cancel the renames, so notall packages will work.
+
 ## Contributors
 
 * [Jelle](https://jellejurre.dev)
