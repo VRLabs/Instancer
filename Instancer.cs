@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -10,27 +8,124 @@ using Object = UnityEngine.Object;
 
 namespace VRLabs.Instancer
 {
+	[InitializeOnLoad]
 	public class Instancer : MonoBehaviour
 	{
-		public static string Instance(string packageName, string installFilePath, string[] excludeRegexs)
+		static bool renameInstances;
+		
+		static Instancer()
+		{
+			renameInstances = PlayerPrefs.GetString("VRLabs.Instancer.RenameInstances", "True") == "True"; ;
+		}
+		
+		[MenuItem("VRLabs/Rename new Instances", priority = 1)]
+		public static void RenameInstancesToggle()
+		{
+			renameInstances = !renameInstances;
+			PlayerPrefs.SetString("VRLabs.Instancer.RenameInstances", renameInstances.ToString());
+		}
+
+		[MenuItem("VRLabs/Rename new Instances", true)]
+		public static bool RenameInstancesToggleValidate()
+		{
+			Menu.SetChecked("VRLabs/Rename new Instances", renameInstances);
+			return true;
+		}
+
+		[MenuItem("VRLabs/Create Instance/Any Package")]
+		public static void CreateInstanceAnyPackageStart()
+		{
+			string sourceFolder = EditorUtility.OpenFolderPanel("Select Directory To Copy Assets From", "Assets/", "");
+
+			if (sourceFolder == "" || sourceFolder == null)
+			{
+				Debug.LogError("No folder selected, please select a folder to copy the assets to.");
+				return;
+			}
+			
+			string targetFolder = EditorUtility.OpenFolderPanel("Select Directory To Copy Assets To", "Assets/", "");
+
+			if (targetFolder == "" || targetFolder == null)
+			{
+				Debug.LogError("No folder selected, please select a folder to copy the assets to.");
+				return;
+			}
+
+			if (!targetFolder.Contains(Application.dataPath))
+			{
+				Debug.LogError("Selected folder is not in the Assets folder, please select a folder in the Assets directory.");
+				return;
+			}
+
+			if (renameInstances)
+			{
+				EnterValueWindow.Open("", "Enter Old Package name", (oldName) =>
+				{
+					EnterValueWindow.Open(oldName, "Enter New Instance name", (newName) =>
+					{
+						FinishInstancing(oldName, "Assets" + sourceFolder.Replace(Application.dataPath, ""), new[]
+						{
+							".*\\.cs",
+							".*\\.asmdef",
+							".*\\.shader",
+							"package.json"
+						}, targetFolder, newName, null, true);
+					});
+				});
+			}
+			else
+			{
+				EnterValueWindow.Open("", "Enter New Instance name", (newName) =>
+				{
+					FinishInstancing(newName, "Assets" + sourceFolder.Replace(Application.dataPath, ""), new[]
+					{
+						".*\\.cs",
+						".*\\.asmdef",
+						".*\\.shader",
+						"package.json"
+					}, targetFolder, null, null, true);
+				});
+			}
+		}
+
+		public static void Instance(string packageName, string installFilePath, string[] excludeRegexs)
+		{
+			InstanceWithCallback(packageName, installFilePath, excludeRegexs, null);
+		}
+		
+		// Done this way because existing packages call the Instance method with 3 parameters
+		public static void InstanceWithCallback(string packageName, string installFilePath, string[] excludeRegexs, Action<string> callBack = null)
 		{
 			string targetFolder = EditorUtility.OpenFolderPanel("Select Directory To Copy Assets To", "Assets/", "");
 
 			if (targetFolder == "" || targetFolder == null)
 			{
 				Debug.LogError("No folder selected, please select a folder to copy the assets to.");
-				return null;
+				return;
 			}
 
 			if (!targetFolder.Contains(Application.dataPath))
 			{
 				Debug.LogError("Selected folder is not in the Assets folder, please select a folder in the Assets directory.");
-				return null;
+				return;
 			}
 
-			targetFolder = PrepareTargetFolderPath(targetFolder, packageName);
+			if (renameInstances)
+			{
+				EnterValueWindow.Open(packageName, "Enter new Instance Name",(newName) => FinishInstancing(packageName, installFilePath, excludeRegexs, targetFolder, newName, callBack));
+				return;
+			} 
 			
-			string sourceFolder = GetSourceFolder(installFilePath);
+			FinishInstancing(packageName, installFilePath, excludeRegexs, targetFolder, callBack: callBack);
+		}
+
+		// Done this way because we need the unity editor to continue running during the rename popup window.
+		public static void FinishInstancing(string packageName, string installFilePath, string[] excludeRegexs,
+			string targetFolder, string newInstanceName = null, Action<string> callBack = null, bool isAnyPackage = false)
+		{
+			targetFolder = PrepareTargetFolderPath(targetFolder, newInstanceName != null ? newInstanceName : packageName);
+
+			string sourceFolder = isAnyPackage ? installFilePath : GetSourceFolder(installFilePath);
 
 			string[] localAssetPaths = GetLocalAssetPaths(sourceFolder, excludeRegexs);
 
@@ -39,18 +134,17 @@ namespace VRLabs.Instancer
 			CopyFiles(localAssetPaths, sourceFolder, targetFolder);
 
 			AssetDatabase.Refresh();
-			
+
 			FixReferences(localAssetPaths, sourceFolder, targetFolder);
-			
+
+			if (newInstanceName != null)
+			{
+				RenameInstance(localAssetPaths, targetFolder, packageName, newInstanceName);
+			}
+
 			AssetDatabase.Refresh();
 			
-			return targetFolder;
-		}
-		
-		public static void Install(string packageName, string installFilePath, string[] excludeRegexs, Action<string> callBack)
-		{
-			string instancePath = Instance(packageName, installFilePath, excludeRegexs);
-			callBack(instancePath);
+			callBack?.Invoke(targetFolder);
 		}
 
 		static string PrepareTargetFolderPath(string folderPath, string packageName)
@@ -152,28 +246,87 @@ namespace VRLabs.Instancer
 			foreach (string localAssetPath in localAssetPaths)
 			{
 				string targetAssetPath = targetFolder + localAssetPath;
-				UnityEngine.Object[] targetAssets = AssetDatabase.LoadAllAssetsAtPath(targetAssetPath);
+				UnityEngine.Object[] targetAssets = AssetDatabase.LoadAllAssetsAtPath(targetAssetPath).Where(x => x != null).ToArray();
+				foreach (var targetAsset in targetAssets)
+				{
+					SerializedObject serializedObject = new SerializedObject(targetAsset);
+					SerializedProperty property = serializedObject.GetIterator();
+					bool changed = false;
+					bool newChanged = false;
+					do
+					{
+						if (property.propertyType == SerializedPropertyType.ObjectReference)
+						{
+							if (property.objectReferenceValue != null)
+							{
+								Object newObject;
+								(newObject, newChanged) = GetTargetVersion(sourceFolder, targetFolder, property.objectReferenceValue);
+								if (newChanged)
+								{
+									changed = true;
+									property.objectReferenceValue = newObject;
+								}
+							}
+						}
+
+						if (property.propertyType == SerializedPropertyType.ExposedReference)
+						{
+							if (property.exposedReferenceValue != null)
+							{
+								Object newObject;
+								(newObject, newChanged) = GetTargetVersion(sourceFolder, targetFolder, property.exposedReferenceValue);
+								if (newChanged)
+								{
+									changed = true;
+									property.exposedReferenceValue = newObject;
+								}
+							}
+						}
+					} while (property.Next(true));
+				
+					if (changed) serializedObject.ApplyModifiedProperties();
+				}
+			}
+		}
+		
+		static void RenameInstance(string[] localAssetPaths, string targetFolder, string packageName, string newInstanceName)
+		{
+			foreach (string localAssetPath in localAssetPaths)
+			{
+				string targetAssetPath = targetFolder + localAssetPath;
+				UnityEngine.Object[] targetAssets = AssetDatabase.LoadAllAssetsAtPath(targetAssetPath).Where(x => x != null).ToArray();
+				if (targetAssets.Length == 0) continue;
+				string[] possibleNames = new []{packageName, packageName.Replace("-", ""), packageName.Replace("-", " ")};
+
+				String fileName = Path.GetFileName(targetAssetPath);
+				foreach (string possibleName in possibleNames)
+				{
+					if (fileName.StartsWith(possibleName))
+					{
+						fileName = ReplaceAtStart(fileName, possibleName, newInstanceName);
+						AssetDatabase.RenameAsset(targetAssetPath, fileName);
+						break;
+					}
+				}
+				
 				foreach (var targetAsset in targetAssets)
 				{
 					SerializedObject serializedObject = new SerializedObject(targetAsset);
 					SerializedProperty property = serializedObject.GetIterator();
 					do
 					{
-						if (property.propertyType == SerializedPropertyType.ObjectReference)
+						if (property.propertyType == SerializedPropertyType.String)
 						{
-							// Debug.Log($"O{property.name}, {property.displayName}, {property.objectReferenceValue}");
-							if (property.objectReferenceValue != null)
+							string value = property.stringValue;
+							if (value == null) continue;
+				
+							foreach (string possibleName in possibleNames)
 							{
-								property.objectReferenceValue = GetTargetVersion(sourceFolder, targetFolder, property.objectReferenceValue);
-							}
-						}
-
-						if (property.propertyType == SerializedPropertyType.ExposedReference)
-						{
-							// Debug.Log($"E{property.name}, {property.displayName}, {property.exposedReferenceValue}");
-							if (property.exposedReferenceValue != null)
-							{
-								property.exposedReferenceValue = GetTargetVersion(sourceFolder, targetFolder, property.exposedReferenceValue);
+								if (value.StartsWith(possibleName) && !value.StartsWith(newInstanceName))
+								{
+									property.stringValue = ReplaceAtStart(value, possibleName, newInstanceName);
+									break;
+								}	
 							}
 						}
 					} while (property.Next(true));
@@ -183,16 +336,48 @@ namespace VRLabs.Instancer
 			}
 		}
 
-		private static Object GetTargetVersion(string sourceFolder, string targetFolder, Object target)
+		public static string ReplaceAtStart(string str, string oldValue, string newValue)
+		{
+			return newValue + str.Substring(oldValue.Length);
+		}
+		private static (Object, bool) GetTargetVersion(string sourceFolder, string targetFolder, Object target)
 		{
 			string targetPath = AssetDatabase.GetAssetPath(target);
 			if (targetPath.StartsWith(sourceFolder))
 			{
-				string newTargetPath = targetFolder + targetPath.Remove(0, sourceFolder.Length); 
-				return AssetDatabase.LoadAllAssetsAtPath(newTargetPath).Where(obj => obj.GetType() == target.GetType()).FirstOrDefault(x => x.name == target.name);
+				string newTargetPath = targetFolder + targetPath.Remove(0, sourceFolder.Length);
+				Object newObject = AssetDatabase.LoadAllAssetsAtPath(newTargetPath).Where(obj => obj.GetType() == target.GetType()).FirstOrDefault(x => x.name == target.name);
+				return (newObject, newObject != null);
 			}
 
-			return target;
+			return (target, false);
+		}
+	}
+
+	public class EnterValueWindow : EditorWindow
+	{
+		private string value = "";
+		private string windowTitle;
+		private Action<string> callBack;
+		public static void Open(string packageName, string windowTitle, Action<string> callBack)
+		{
+			var window = GetWindow<EnterValueWindow>(windowTitle);
+			window.windowTitle = windowTitle;
+			window.value = packageName;
+			window.callBack = callBack;
+			window.Show();
+		}
+
+		private void OnGUI()
+		{
+			EditorGUILayout.LabelField(windowTitle, EditorStyles.boldLabel);
+			value = EditorGUILayout.TextField(value);
+
+			if (GUILayout.Button("Submit"))
+			{				
+				Close();
+				callBack(value);
+			}
 		}
 	}
 }
