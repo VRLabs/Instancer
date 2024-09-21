@@ -255,6 +255,7 @@ namespace VRLabs.Instancer
 					bool newChanged = false;
 					do
 					{
+						if (property.propertyPath.Contains("m_Modification")) continue;
 						if (property.propertyType == SerializedPropertyType.ObjectReference)
 						{
 							if (property.objectReferenceValue != null)
@@ -297,17 +298,6 @@ namespace VRLabs.Instancer
 				UnityEngine.Object[] targetAssets = AssetDatabase.LoadAllAssetsAtPath(targetAssetPath).Where(x => x != null).ToArray();
 				if (targetAssets.Length == 0) continue;
 				string[] possibleNames = new []{packageName, packageName.Replace("-", ""), packageName.Replace("-", " ")};
-
-				String fileName = Path.GetFileName(targetAssetPath);
-				foreach (string possibleName in possibleNames)
-				{
-					if (fileName.StartsWith(possibleName))
-					{
-						fileName = ReplaceAtStart(fileName, possibleName, newInstanceName);
-						AssetDatabase.RenameAsset(targetAssetPath, fileName);
-						break;
-					}
-				}
 				
 				foreach (var targetAsset in targetAssets)
 				{
@@ -315,6 +305,7 @@ namespace VRLabs.Instancer
 					SerializedProperty property = serializedObject.GetIterator();
 					do
 					{
+						if (property.propertyPath.Contains("m_Modification")) continue;
 						if (property.propertyType == SerializedPropertyType.String)
 						{
 							string value = property.stringValue;
@@ -332,6 +323,17 @@ namespace VRLabs.Instancer
 					} while (property.Next(true));
 				
 					serializedObject.ApplyModifiedProperties();	
+				}
+				
+				String fileName = Path.GetFileName(targetAssetPath);
+				foreach (string possibleName in possibleNames)
+				{
+					if (fileName.StartsWith(possibleName))
+					{
+						fileName = ReplaceAtStart(fileName, possibleName, newInstanceName);
+						AssetDatabase.RenameAsset(targetAssetPath, fileName);
+						break;
+					}
 				}
 			}
 		}
