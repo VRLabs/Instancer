@@ -15,7 +15,7 @@ namespace VRLabs.Instancer
 		
 		static Instancer()
 		{
-			renameInstances = PlayerPrefs.GetString("VRLabs.Instancer.RenameInstances", "True") == "True"; ;
+			renameInstances = PlayerPrefs.GetString("VRLabs.Instancer.RenameInstances", "False") == "True"; ;
 		}
 		
 		[MenuItem("VRLabs/Rename new Instances", priority = 1)]
