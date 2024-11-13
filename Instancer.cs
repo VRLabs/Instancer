@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -15,7 +15,7 @@ namespace VRLabs.Instancer
 		
 		static Instancer()
 		{
-			renameInstances = PlayerPrefs.GetString("VRLabs.Instancer.RenameInstances", "True") == "True"; ;
+			renameInstances = PlayerPrefs.GetString("VRLabs.Instancer.RenameInstances", "False") == "True"; ;
 		}
 		
 		[MenuItem("VRLabs/Rename new Instances", priority = 1)]
@@ -173,6 +173,7 @@ namespace VRLabs.Instancer
 #if UNITY_2019
 			while (!File.Exists("." + sourceFolder + "/package.json"))
 #else
+			if (sourceFolder.StartsWith("/Assets")) sourceFolder = sourceFolder.Replace("/Assets", "./Assets");
 			while (!File.Exists(sourceFolder + "/package.json"))
 #endif
 			{
