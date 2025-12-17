@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -136,7 +138,9 @@ namespace VRLabs.Instancer
 			AssetDatabase.Refresh();
 
 			FixReferences(localAssetPaths, sourceFolder, targetFolder);
-
+			
+			FixPrefabReferences(localAssetPaths, sourceFolder, targetFolder);
+			
 			if (newInstanceName != null)
 			{
 				RenameInstance(localAssetPaths, targetFolder, packageName, newInstanceName);
@@ -248,8 +252,13 @@ namespace VRLabs.Instancer
 			{
 				string targetAssetPath = targetFolder + localAssetPath;
 				UnityEngine.Object[] targetAssets = AssetDatabase.LoadAllAssetsAtPath(targetAssetPath).Where(x => x != null).ToArray();
+
 				foreach (var targetAsset in targetAssets)
 				{
+					if (PrefabUtility.GetPrefabAssetType(targetAsset) == PrefabAssetType.Variant)
+					{
+						break;
+					}
 					SerializedObject serializedObject = new SerializedObject(targetAsset);
 					SerializedProperty property = serializedObject.GetIterator();
 					bool changed = false;
@@ -284,11 +293,73 @@ namespace VRLabs.Instancer
 								}
 							}
 						}
+
 					} while (property.Next(true));
 				
 					if (changed) serializedObject.ApplyModifiedProperties();
 				}
 			}
+		}
+		
+		
+		static void FixPrefabReferences(string[] localAssetPaths, string sourceFolder, string targetFolder)
+		{
+		    Dictionary<string, string> guidMap = new Dictionary<string, string>();
+		    localAssetPaths = localAssetPaths.Where(x => x.EndsWith("prefab") || x.EndsWith(".fbx")).ToArray();
+		    // Build GUID mapping
+		    foreach (string localPath in localAssetPaths)
+		    {
+		        string sourcePath = sourceFolder + localPath;
+		        string targetPath = targetFolder + localPath;
+		        
+		        if (!File.Exists(sourcePath) || !File.Exists(targetPath)) continue;
+		        
+	            string sourceGuid = GetGuid(sourcePath + ".meta");
+	            string targetGuid = GetGuid(targetPath + ".meta");
+	            if (!string.IsNullOrEmpty(sourceGuid) && !string.IsNullOrEmpty(targetGuid))
+	                guidMap[sourceGuid] = targetGuid;
+		   
+		    }
+		    
+		    // Update all target prefabs
+		    foreach (string localPath in localAssetPaths)
+		    {
+		        string targetPath = targetFolder + localPath;
+		        if (!File.Exists(targetPath)) continue;
+		        
+	            string[] lines = File.ReadAllLines(targetPath);
+	            bool modified = false;
+	            
+	            for (int i = 0; i < lines.Length; i++)
+	            {
+	                if (lines[i].Contains("guid:"))
+	                {
+	                    Match match = Regex.Match(lines[i], @"guid:\s*([0-9a-fA-F]{32})");
+	                    if (match.Success && guidMap.TryGetValue(match.Groups[1].Value.ToLower(), out string newGuid))
+	                    {
+	                        lines[i] = Regex.Replace(lines[i], @"guid:\s*[0-9a-fA-F]{32}", $"guid: {newGuid}");
+	                        modified = true;
+	                    }
+	                }
+	            }
+	            
+	            if (modified)
+	            {
+	                File.WriteAllLines(targetPath, lines);
+	            }
+		        
+		    }
+		    
+		    AssetDatabase.Refresh();
+		}
+
+		static string GetGuid(string metaPath)
+		{
+		    if (!File.Exists(metaPath)) return null;
+		    foreach (string line in File.ReadLines(metaPath))
+		        if (line.StartsWith("guid:"))
+		            return line.Substring(5).Trim().ToLower();
+		    return null;
 		}
 		
 		static void RenameInstance(string[] localAssetPaths, string targetFolder, string packageName, string newInstanceName)
@@ -343,6 +414,7 @@ namespace VRLabs.Instancer
 		{
 			return newValue + str.Substring(oldValue.Length);
 		}
+		
 		private static (Object, bool) GetTargetVersion(string sourceFolder, string targetFolder, Object target)
 		{
 			string targetPath = AssetDatabase.GetAssetPath(target);
