@@ -255,9 +255,9 @@ namespace VRLabs.Instancer
 
 				foreach (var targetAsset in targetAssets)
 				{
-					if (PrefabUtility.GetPrefabAssetType(targetAsset) == PrefabAssetType.Variant)
+					if (targetAsset.GetType() == typeof(UnityEngine.Object) && targetAsset.ToString().Contains(" (UnityEngine.PrefabInstance)"))
 					{
-						break;
+						continue;
 					}
 					SerializedObject serializedObject = new SerializedObject(targetAsset);
 					SerializedProperty property = serializedObject.GetIterator();
