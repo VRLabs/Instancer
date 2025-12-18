@@ -139,8 +139,6 @@ namespace VRLabs.Instancer
 
 			FixReferences(localAssetPaths, sourceFolder, targetFolder);
 			
-			FixPrefabReferences(localAssetPaths, sourceFolder, targetFolder);
-			
 			if (newInstanceName != null)
 			{
 				RenameInstance(localAssetPaths, targetFolder, packageName, newInstanceName);
@@ -148,9 +146,11 @@ namespace VRLabs.Instancer
 
 			AssetDatabase.Refresh();
 			
+			FixPrefabReferences(localAssetPaths, sourceFolder, targetFolder);
+			
 			callBack?.Invoke(targetFolder);
 		}
-
+		
 		static string PrepareTargetFolderPath(string folderPath, string packageName)
 		{
 			folderPath = "Assets" + folderPath.Remove(0, Application.dataPath.Length) + "/" + packageName;
@@ -248,57 +248,126 @@ namespace VRLabs.Instancer
 
 		static void FixReferences(string[] localAssetPaths, string sourceFolder, string targetFolder)
 		{
-			foreach (string localAssetPath in localAssetPaths)
-			{
-				string targetAssetPath = targetFolder + localAssetPath;
-				UnityEngine.Object[] targetAssets = AssetDatabase.LoadAllAssetsAtPath(targetAssetPath).Where(x => x != null).ToArray();
+		    foreach (string localAssetPath in localAssetPaths)
+		    {
+		        string targetAssetPath = targetFolder + localAssetPath;
 
-				foreach (var targetAsset in targetAssets)
-				{
-					if (targetAsset.GetType() == typeof(UnityEngine.Object) && targetAsset.ToString().Contains(" (UnityEngine.PrefabInstance)"))
-					{
-						continue;
-					}
-					SerializedObject serializedObject = new SerializedObject(targetAsset);
-					SerializedProperty property = serializedObject.GetIterator();
-					bool changed = false;
-					bool newChanged = false;
-					do
-					{
-						if (property.propertyPath.Contains("m_Modification")) continue;
-						if (property.propertyType == SerializedPropertyType.ObjectReference)
-						{
-							if (property.objectReferenceValue != null)
-							{
-								Object newObject;
-								(newObject, newChanged) = GetTargetVersion(sourceFolder, targetFolder, property.objectReferenceValue);
-								if (newChanged)
-								{
-									changed = true;
-									property.objectReferenceValue = newObject;
-								}
-							}
-						}
+		        if (targetAssetPath.EndsWith(".prefab"))
+		        {
+		            FixPrefabReferences(targetAssetPath, sourceFolder, targetFolder);
+		        }
 
-						if (property.propertyType == SerializedPropertyType.ExposedReference)
-						{
-							if (property.exposedReferenceValue != null)
-							{
-								Object newObject;
-								(newObject, newChanged) = GetTargetVersion(sourceFolder, targetFolder, property.exposedReferenceValue);
-								if (newChanged)
-								{
-									changed = true;
-									property.exposedReferenceValue = newObject;
-								}
-							}
-						}
+		        FixNonPrefabReferences(targetAssetPath, sourceFolder, targetFolder);
+		    }
+		}
 
-					} while (property.Next(true));
-				
-					if (changed) serializedObject.ApplyModifiedProperties();
-				}
-			}
+		static void FixPrefabReferences(string prefabPath, string sourceFolder, string targetFolder)
+		{
+		    GameObject prefabInstance = PrefabUtility.LoadPrefabContents(prefabPath);
+		    
+		    try
+		    {
+		        bool changed = false;
+		        
+		        Component[] allComponents = prefabInstance.GetComponentsInChildren<Component>(true);
+		        foreach (Component component in allComponents)
+		        {
+		            if (component == null) continue;
+		            
+		            SerializedObject serializedObject = new SerializedObject(component);
+		            changed |= ProcessSerializedObject(serializedObject, sourceFolder, targetFolder);
+		            
+		            if (component.gameObject != prefabInstance)
+		            {
+		                SerializedObject gameObjectSerialized = new SerializedObject(component.gameObject);
+		                changed |= ProcessSerializedObject(gameObjectSerialized, sourceFolder, targetFolder);
+		            }
+		        }
+		        
+		        if (changed)
+		        {
+		            PrefabUtility.SaveAsPrefabAsset(prefabInstance, prefabPath);
+		        }
+		    }
+		    finally
+		    {
+		        PrefabUtility.UnloadPrefabContents(prefabInstance);
+		    }
+		}
+
+		static void FixNonPrefabReferences(string assetPath, string sourceFolder, string targetFolder)
+		{
+		    UnityEngine.Object[] targetAssets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
+		    
+		    foreach (var targetAsset in targetAssets)
+		    {
+		        if (targetAsset == null) continue;
+		        
+		        if (targetAsset.ToString().Contains(" (UnityEngine.PrefabInstance)"))
+		        {
+		            continue;
+		        }
+		        
+		        SerializedObject serializedObject = new SerializedObject(targetAsset);
+		        ProcessSerializedObject(serializedObject, sourceFolder, targetFolder);
+		    }
+		}
+
+		static bool ProcessSerializedObject(SerializedObject serializedObject, string sourceFolder, string targetFolder)
+		{
+		    bool changed = false;
+		    
+		    SerializedProperty property = serializedObject.GetIterator();
+		    bool enterChildren = true;
+		    
+		    while (property.Next(enterChildren))
+		    {
+		        enterChildren = true;
+		        
+		        // Skip certain properties
+		        if (property.propertyPath.Contains("m_Modification") || 
+		            property.propertyPath.Contains("m_ParentPrefab") ||
+		            property.propertyPath.Contains("m_CorrespondingSourceObject") ||
+		            property.propertyPath.Contains("m_PrefabInstance") ||
+		            property.propertyPath.Contains("m_PrefabAsset"))
+		        {
+		            enterChildren = false;
+		            continue;
+		        }
+		        
+		        if (property.propertyType == SerializedPropertyType.ObjectReference)
+		        {
+		            if (property.objectReferenceValue != null)
+		            {
+		                UnityEngine.Object newObject;
+		                bool newChanged;
+		                (newObject, newChanged) = GetTargetVersion(sourceFolder, targetFolder, property.objectReferenceValue);
+		                if (newChanged && newObject != null)
+		                {
+		                    changed = true;
+		                    property.objectReferenceValue = newObject;
+		                }
+		            }
+		        }
+		        else if (property.propertyType == SerializedPropertyType.ExposedReference)
+		        {
+		            if (property.exposedReferenceValue != null)
+		            {
+		                UnityEngine.Object newObject;
+		                bool newChanged;
+		                (newObject, newChanged) = GetTargetVersion(sourceFolder, targetFolder, property.exposedReferenceValue);
+		                if (newChanged && newObject != null)
+		                {
+		                    changed = true;
+		                    property.exposedReferenceValue = newObject;
+		                }
+		            }
+		        }
+		    }
+		    
+		    if (changed) serializedObject.ApplyModifiedProperties();
+		    
+		    return changed;
 		}
 		
 		
